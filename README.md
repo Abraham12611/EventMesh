@@ -28,8 +28,6 @@ The application implements:
 ### Prerequisites
 
 - Docker and Docker Compose installed
-- Git (for cloning the repository)
-- cURL or similar tool for testing (optional)
 
 ### Installation
 
