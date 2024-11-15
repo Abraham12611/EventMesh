@@ -34,8 +34,8 @@ The application implements:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/event-driven-processing.git
-cd event-driven-processing
+git clone https://github.com/yourusername/EventMesh.git
+cd EventMesh
 ```
 
 1. Start the application:
