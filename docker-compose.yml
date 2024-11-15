@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+
+  producer:
+    build: ./producer
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.producer.rule=PathPrefix(`/produce`)"
+      - "traefik.http.services.producer.loadbalancer.server.port=${PRODUCER_PORT}"
+    environment:
+      - KAFKA_BROKER=${KAFKA_BROKER}
+      - TOPIC_NAME=${TOPIC_NAME}
+      - PORT=${PRODUCER_PORT}
+    depends_on:
+      - kafka
+
+  consumer:
+    build: ./consumer
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.consumer.rule=PathPrefix(`/consume`)"
+      - "traefik.http.services.consumer.loadbalancer.server.port=${CONSUMER_PORT}"
+    environment:
+      - KAFKA_BROKER=${KAFKA_BROKER}
+      - TOPIC_NAME=${TOPIC_NAME}
+      - PORT=${CONSUMER_PORT}
+    depends_on:
+      - kafka
+
+  api:
+    build: ./api
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=PathPrefix(`/api`)"
+      - "traefik.http.services.api.loadbalancer.server.port=${API_PORT}"
+    environment:
+      - PORT=${API_PORT}
+    depends_on:
+      - producer
+      - consumer
